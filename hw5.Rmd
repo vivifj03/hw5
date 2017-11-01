@@ -1,0 +1,538 @@
+---
+title: "Homework 5: Normalization"
+author: "Viviana Alejandra Rodriguez Romero"
+date: "November 06, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options("scipen"=100, "digits"=4)
+```
+
+<br />   
+
+## Question 1 
+
+In Amaratunga & Cabrera (2004) "Exploration and Analysis of DNA Microarray and Protein Array Data", the authors suggest judging the success of or need for normalization by estimating Spearman's rank correlation coefficient given by,
+
+$$\hat{p}_s=\frac{12\sum_{g=1}^{G} (R_{g1}-\frac{1}{2}(G+1))(R_{g2}-\frac{1}{2}(G+1))}{G(G^2-1)}$$
+
+where $R_{gi}$ is the rank of $Y_{gi}$ when { $Y_{gi}$} are ranked from 1 to G, and the concondance correlation coefficient, which is given as 
+
+$$\hat{p}_c = \frac{2s_{12}}{s_1^2+s_2^2 + (\hat{Y}_1 - \hat{Y}_2)^2}$$
+
+where $\hat{Y}_c=\sum_{g=1}^{G} \frac{Y_{gc}}{G}$ and $s_c^2= \sum_{g=1}^{G} \frac{(Y_{gc}-\hat{Y}_{c})^2}{G}$ are the mean and the variance of the $c^{th}$ microarray (c=1, 2) and $s_{12}= \sum_{g=1}^{G} \frac{(Y_{g1}-\hat{Y}_{1})(Y_{g2}-\hat{Y}_{2})}{G}$ is the covariance.
+
+The guidelines are presented as follows:
+
+- If, for pair of arrays, $\hat{p}_c$ is very high (say, $\geq$ 0.99), normalization may not be necessary.
+- If $\hat{p}_c$ is not very high yet $\hat{p}_s$ is high (say, $\hat{p}_c$ $\geq$ 0.80), indicating a monotone, but not strongly concordant relationship, normalization is very likely to be highly beneficial.
+- When both $\hat{p}_c$ and $\hat{p}_s$ are low, indicating that the relationship between the arrays is not strong, it may be worth looking further to see whether there was a problem with either of the arrays before doing any normalization.
+
+Examine this advice by doing the following:
+
+a. First, set the random seed to 123 using    
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+set.seed(123)   
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Use the mvrnorm function in the MASS library in R to generate 50 observations from a bivariate normal distribution  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+with mean vector (0,0) and variance-covariance matrix matrix(c(1, 0.95, 0.95, 1), ncol =1)
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Produce a scatterplot of the two vectors.
+
+```{r}
+set.seed(123)
+library(MASS)
+q1a<-mvrnorm(n=50, mu=c(0,0), Sigma = matrix(c(1, 0.95, 0.95,1), ncol=2))
+
+plot(q1a[,1], q1a[,2], main="Scatterplot question 1-a", 
+  	xlab="Array 1", ylab="Array 2", pch=19)
+```   
+
+
+<p> </p>
+
+b. Use the cor function in R to estimate Spearman's correlation.
+
+```{r}
+cor(q1a, method = "spearman")
+```
+<p> </p>
+
+The Spearman's correlation between arrays 1 and 2 is `r  cor(q1a, method = "spearman")[1,2]`.
+
+<p> </p>
+
+c. Write your own R function to estimate the concordance correlation coefficient.   
+
+```{r}
+ccc<-function(x,y){
+  2*cov(x, y)/(var(x) + var(y) + (mean(x)-mean(y))^2)
+}
+```   
+
+<p> </p>
+
+d. Estimate the concordance correlation coefficient on the data.
+
+```{r}
+ccc(q1a[,1], q1a[,2])
+```    
+
+<p> </p>
+
+The concordance correlation coefficient is `r ccc(q1a[,1], q1a[,2])`.  
+
+<p> </p>
+
+e. Now, set the random seed again to 123 using    
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+set.seed(123)    
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Use the MASS library in R to generate 50 observations from a bivariate normal distribution with mean vector (6, 8) and 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; variance-covariance matrix matrix(c(1, 0.95, 0.95, 1), ncol = 1)
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Produce a scatterplot of the two vectors.
+
+```{r}
+set.seed(123)
+library(MASS)
+q1e<-mvrnorm(n=50, mu=c(6,8), Sigma = matrix(c(1, 0.95, 0.95,1), ncol=2))
+
+plot(q1e[,1], q1e[,2], main="Scatterplot question 1-e", 
+  	xlab="Array 1", ylab="Array 2", pch=19)
+```   
+
+<p> </p>
+
+f. Estimate Spearman's and the concordance correlation coefficient for the data generated in part (e). 
+
+```{r}
+cor(q1e, method = "spearman")
+ccc(q1e[,1], q1e[,2])
+```  
+
+<p> </p>
+
+The Spearman's correlation between arrays 1 and 2 is `r  cor(q1e, method = "spearman")[1,2]` and the concordance correlation coefficient is `r ccc(q1e[,1], q1e[,2])`. As compared with the results of the first pair of simulated arrays, the correlation still high but the concordance is lower. Then, some normalization would be beneficial for this array. 
+
+<p> </p>
+
+g. Imagine that these two datasets from part (a) and part (e) represent are data from the Red and Green channels of two different custom spotted arrays (i.e., arrayA and arrayE). Plot both arrays on an MA plot, and observe their behaviour. Discuss whether normalization is needed for these chips, and if so, what type of normalization procedure you would recommend.
+
+```{r}
+M1<- (q1a[,2] - q1a[,1])
+A1<- (q1a[,2] + q1a[,1])/2
+M2<- q1e[,2] - q1e[,1]
+A2<- (q1e[,2] + q1e[,1])/2
+
+plot(A1, M1,  main="MA-plot for arrays A and E", xlab="A", ylab="M", col="red", pch=19,
+     xlim=c(-2,10), ylim = c(-0.7, 2.8))
+points(A2, M2,  col="blue", pch=24, xlab="A", ylab="M")
+legend(8,1, legend=c("Array A", "Array E"), col=c("red","Blue"),
+       box.lty=0, pch = c(19, 24), cex=0.8)
+```
+
+
+<p> </p>
+
+As we can see in the above plot, some normalization should be used if we want to analyze this two arrays together. First, an intra-slide normalization does not seem to be required for any array, since there is not a clear pattern for the MA plot of each array. Now, an inter-slide normalization is required. As we know from parts (a) and (e), there is a linear relationship between red and green intensities, and we only have two arrays. Then, either global normalization or intensity dependent normalization methods would give similar results. However, since intensity normalization methods are more common, it is better to use one of those to increase compatibility with other studies results.    
+
+<br />   
+
+## Question 2 
+
+Suppose you are reviewing a manuscript for publication, and the authors developed the following method for detecting outliers in microarray experiments, where each microarray contains 20,000 gene intensities:
+
+<p> </p>
+
+"Extreme signal intensities (outliers) across all genes are those intensities either greater than or less than the median ± 1.5XIQR, where the IQR is the difference between the third and first quartiles, symbolically, IQR=Q3-Q1."
+
+<p> </p>
+
+Suppose in reality your gene intensities are normally distributed. What proportion of gene expression intensities would you expect to declare as outliers? Comment on the appropriateness of this method.
+
+<p> </p>
+
+Assuming normally distributed gene expression, without loss of generality standard normal (N(0,1)). The $IQR=0.6745+0.6745=1.349$. Hence, the outliers will be those values either less than $-2.023$ or greater than $2.023$. Since $P(\Phi<-2.023)=0.02154$ and the distribution is symmetric, a **4.31%** of the gene expressions will be marked as outliers.    
+
+I do not think this method is appropriate. First, if the distribution is normal, this method is identifying the lowest and highest intensity values and will classify 831 genes as outliers, which is not very realistic to think there might be that amount of outliers. Now, if the distribution is not normal, then this method will be very inefficient in the outlier identification. Hence, a visual assessment (box-plot or probability plots) is always suggested for outlier identification as well as some tests (e.g. Dixon's ratio test).
+
+
+
+<br />   
+
+## Question 3 
+
+The swiss data set in R includes a standardized fertility measure and socio-economic indicators for each of 47 French-speaking provinces of Switzerland at about 1888.For the swiss data in R. 
+
+<p> </p>
+
+a. plot an MA plot for the variables Education and Infant.Mortality.
+
+```{r}
+data("swiss")
+swiss$M= swiss$Education - swiss$Infant.Mortality
+swiss$A= (swiss$Education + swiss$Infant.Mortality)/2
+plot(swiss$A, swiss$M, xlab="A", ylab="M",
+     main="MA plot for Education and Infant mortality")
+```
+
+<p> </p>
+
+b. Using a span of 40% fit a lowess regression to the MA plot. List the fitted values and overlay the fitted curve on the MA plot.
+
+```{r}
+fit1 <- loess(M ~ A, data = swiss, span = 0.4, degree = 1 )
+plot(swiss$A, swiss$M, xlab="A", ylab="M",
+     main="MA plot for Education and Infant mortality")
+lines(sort(fit1$x), fit1$fitted[order(fit1$x)], col = "red")
+legend(30,10, legend="Lowess", col="red", box.lty=0, lty=1, cex=0.8)
+```   
+
+<p> </p>
+
+The fitted values are: 
+
+```{r}
+library(DT)
+datatable(cbind(rownames(swiss),round(fit1$fitted,3)), 
+          colnames = c("Province", "Fitted value"),  
+          options = list(order = list(list(1, 'desc'))))
+``` 
+
+<p> </p>
+
+c. What is the name of the province has values of Education = 9 and Infant.Mortality = 17.8?
+
+```{r}  
+swiss[which(swiss$Education ==9 & swiss$Infant.Mortality ==17.8), ] %>% rownames
+```   
+
+<p> </p>
+
+St Maurice is the province with values of Education = 9 and Infant.Mortality = 17.8.     
+
+<p> </p>
+
+d. Identify this province (Education = 9 and Infant.Mortality = 17.8) on the MA plot using plotting symbol pch=24.
+
+```{r}
+plot(swiss$A, swiss$M, xlab="A", ylab="M",
+     main="MA plot for Education and Infant mortality")
+lines(sort(fit1$x), fit1$fitted[order(fit1$x)], col = "red")
+points((9+17.8)/2, 9-17.8, pch=24, col="Blue")
+legend(30,10, legend=c("Lowess", "St Maurice"), col=c("red","Blue"),
+       box.lty=0, lty=c(1, NA), pch = c(NA, 24), cex=0.8)
+```
+
+<p> </p>
+
+e. List the names of these 18 provinces that are nearest neighbors on the MA plot to observation with Education = 9 and Infant.Mortality = 17.8.
+
+```{r}
+swiss$distance.36 <- abs(swiss$A - swiss$A[36])
+swiss$neighbor.36 <- ifelse(rank(swiss$distance.36) <= 18, 1, 0) 
+
+swiss[swiss$neighbor.36==1, ] %>% rownames
+```
+
+<p> </p>
+
+f. Identify these 18 provinces (from part f) on the MA plot using plotting symbol pch=16.
+
+```{r}
+plot(swiss$A, swiss$M, xlab="A", ylab="M",
+     main="MA plot for Education and Infant mortality")
+lines(sort(fit1$x), fit1$fitted[order(fit1$x)], col = "red")
+points(swiss[swiss$neighbor.36 == 1,]$A, 
+       swiss[swiss$neighbor.36 == 1,]$M, pch = 16, col="Green")
+points((9+17.8)/2, 9-17.8, pch=24, col="Blue")
+legend(30,10, legend=c("Lowess", "St Maurice", "18-Neighbors"), col=c("red","Blue","Green"),
+       box.lty=0, lty=c(1, NA,NA), pch = c(NA, 24,16), cex=0.8)
+```
+
+<p> </p>
+
+g. using the tri-cube weight function, list the weights for each of these 18 nearest neighbors listed in (3f).
+
+```{r}   
+delta.36 <- max(swiss[swiss$neighbor.36 == 1,]$distance.36)
+swiss$u.36 <- ifelse(swiss$neighbor.36 == 1, (swiss$distance.36)/ delta.36, NA)
+swiss$weight.36 <- ifelse( swiss$u.36 >= 0 & swiss$u.36 < 1, (1 - (swiss$u.36)^3)^3, 0)
+
+datatable(cbind(rownames(swiss[!(is.na(swiss$weight.36)),]),
+                round(swiss[!(is.na(swiss$weight.36)),"weight.36"],4)), 
+          colnames = c("Province", "Tri-cube weight"),  
+          options = list(order = list(list(1, 'desc'))))
+```
+<p> </p>
+
+h. Fit the weighted least squares regression model for this point using these 18 neareast neighbors for the MA plot.
+
+```{r}   
+local.36 <- lm(M ~ A, data=swiss, x = TRUE, weights = weight.36)
+```
+<p> </p>
+
+i. Overlay the fitted weighted least squares regression line on the MA plot.
+
+```{r}   
+plot(swiss$A, swiss$M, xlab="A", ylab="M",
+     main="MA plot for Education and Infant mortality")
+lines(sort(fit1$x), fit1$fitted[order(fit1$x)], col = "red")
+points(swiss[swiss$neighbor.36 == 1,]$A, 
+       swiss[swiss$neighbor.36 == 1,]$M, pch = 16, col="Green")
+points((9+17.8)/2, 9-17.8, pch=24, col="Blue")
+abline( local.36, lty=2)
+legend(28,10, legend=c("Lowess", "St Maurice", "18-Neighbors", "Lowess for 18-nn"),
+       col=c("red","Blue", "Green", "black"), box.lty=0, lty=c(1, NA, NA, 2), 
+       pch = c(NA, 24, 16, NA), cex=0.8)
+```
+
+<br />   
+
+## Question 4 
+
+The three custom spotted array data files GMU1420.txt, GMU1421.txt, and GMU1422.txt are three technical replicates whereby the Stratagene Universal Human RNA was hybridized. Read the data into the R
+programming environment. Use code from in-class exercises, change names of the columns containing
+Red/Green intensities as to NOT contain spaces, like: name.Gf = "ch1Intensity".
+
+<p> </p>
+
+```{r message=FALSE}
+#Reading data
+library(Biobase)
+library(marray)
+file <- dir(pattern = "txt")
+layout <- read.marrayLayout(fname = file[1], ngr = 12, ngc = 4, nsr = 21, nsc = 21, skip = 21211)
+info <- read.marrayInfo(fname = file[1], info.id = c(1, 6), labels = 6, skip = 21211)
+xlabels <- c("1", "2", "3")
+raw.data <- read.marrayRaw(file, name.Gf = "ch1Intensity", name.Gb = "ch1Background", 
+                                 name.Rf = "ch2Intensity", name.Rb = "ch2Background", 
+                                 layout = layout, gnames = info, skip = 21211)
+```     
+<p> </p>
+
+
+a. Produce all chip-specific MA plots.
+
+```{r}
+par(mfrow=c(1,3),oma=c(0,0,2,0))
+maPlot(raw.data[, 1], x = "maA", y = "maM", lines.func= NULL, legend.func = NULL, main= "GMU1420")
+maPlot(raw.data[, 2], x = "maA", y = "maM", lines.func= NULL, legend.func = NULL, main= "GMU1421")
+maPlot(raw.data[, 3], x = "maA", y = "maM", lines.func= NULL, legend.func = NULL, main= "GMU1422")
+title("MA plots by chip", outer=TRUE)
+```    
+
+<p> </p>
+
+b. For GMU1420.txt, produce a scatterplot of the Green foreground by Green background, as well as a plot of Red foreground by Red background. What, if anything, do these plot suggest?
+
+
+```{r}
+par(mfrow=c(1,2),oma=c(0,0,2,0))
+plot(raw.data@maGb[,1], raw.data@maGf[,1], ylab="Green foreground", xlab="Green background", col="green4")
+plot(raw.data@maRb[,1], raw.data@maRf[,1], ylab="Red foreground", xlab="Red background", col="red")
+title("Scatterplot of foreground by background in GMU1420", outer=TRUE)
+```    
+
+<p> </p>
+
+The above plot shows the scatterplot for both green and red intensities foreground by background. We are expecting small background values or at least smaller background intensities as compared with the corresponding foreground intensity.  For the green scatterplot, we can see that there are some cases where the background value is higher than the foreground value (e.g. background > 4000 and foreground < 2000). We can see some similar cases on the red scatterplot. However, there seems to be more dispersion in the red scatterplot. Hence, some intra-slide normalization should be considered to make intensities in two channels consistent.     
+
+<p> </p>
+
+c. Apply constant global normalization to the raw data; plot the MA plots and boxplots by print-tip for this post normalized data.
+
+```{r}
+global.norm <- maNorm(raw.data, norm = 'median')  
+par(mfrow=c(1,3),oma=c(0,0,2,0))
+maPlot(global.norm[, 1], x = "maA", y = "maM", lines.func= NULL, legend.func = NULL, main= "GMU1420")
+maPlot(global.norm[, 2], x = "maA", y = "maM", lines.func= NULL, legend.func = NULL, main= "GMU1421")
+maPlot(global.norm[, 3], x = "maA", y = "maM", lines.func= NULL, legend.func = NULL, main= "GMU1422")
+title("MA plots by chip after global normalization", outer=TRUE)
+```
+```{r fig.height=10}
+par(mfrow=c(3,1),oma=c(0,0,2,0))
+maBoxplot(global.norm[, 1], x = "maPrintTip", y = "maM", lines.func= NULL, 
+          legend.func = NULL, main= "GMU1420")
+maBoxplot(global.norm[, 2], x = "maPrintTip", y = "maM", lines.func= NULL, 
+          legend.func = NULL, main= "GMU1421")
+maBoxplot(global.norm[, 3], x = "maPrintTip", y = "maM", lines.func= NULL, 
+          legend.func = NULL, main= "GMU1422")
+title("Boxplots by chip after global normalization", outer=TRUE)
+```    
+
+<p> </p>
+
+d. Apply global loess normalization to the raw data; plot the MA plots and boxplots by print-tip for this post normalized data.
+
+```{r}
+loess.norm <- maNorm(raw.data, norm = 'loess')  
+par(mfrow=c(1,3),oma=c(0,0,2,0))
+maPlot(loess.norm[, 1], x = "maA", y = "maM", lines.func= NULL, legend.func = NULL, main= "GMU1420")
+maPlot(loess.norm[, 2], x = "maA", y = "maM", lines.func= NULL, legend.func = NULL, main= "GMU1421")
+maPlot(loess.norm[, 3], x = "maA", y = "maM", lines.func= NULL, legend.func = NULL, main= "GMU1422")
+title("MA plots by chip after loess normalization", outer=TRUE)
+```
+```{r fig.height=12}
+par(mfrow=c(3,1),oma=c(0,0,2,0))
+maBoxplot(loess.norm[, 1], x = "maPrintTip", y = "maM", lines.func= NULL, 
+          legend.func = NULL, main= "GMU1420")
+maBoxplot(loess.norm[, 2], x = "maPrintTip", y = "maM", lines.func= NULL, 
+          legend.func = NULL, main= "GMU1421")
+maBoxplot(loess.norm[, 3], x = "maPrintTip", y = "maM", lines.func= NULL, 
+          legend.func = NULL, main= "GMU1422")
+title("Boxplots by chip after loess normalization", outer=TRUE)
+```    
+<p> </p>
+
+e. Apply print tip loess normalization to the raw data; plot the MA plots and boxplots by print tip for this post normalized data.
+
+```{r}
+printTip.norm <- maNorm(raw.data)  
+par(mfrow=c(1,3),oma=c(0,0,2,0))
+maPlot(printTip.norm[, 1], x = "maA", y = "maM", lines.func= NULL, 
+       legend.func = NULL, main= "GMU1420")
+maPlot(printTip.norm[, 2], x = "maA", y = "maM", lines.func= NULL, 
+       legend.func = NULL, main= "GMU1421")
+maPlot(printTip.norm[, 3], x = "maA", y = "maM", lines.func= NULL, 
+       legend.func = NULL, main= "GMU1422")
+title("MA plots by chip after print tip loess normalization", outer=TRUE)
+```
+```{r fig.height=12}
+par(mfrow=c(3,1),oma=c(0,0,2,0))
+maBoxplot(printTip.norm[, 1], x = "maPrintTip", y = "maM", lines.func= NULL, 
+          legend.func = NULL, main= "GMU1420")
+maBoxplot(printTip.norm[, 2], x = "maPrintTip", y = "maM", lines.func= NULL, 
+          legend.func = NULL, main= "GMU1421")
+maBoxplot(printTip.norm[, 3], x = "maPrintTip", y = "maM", lines.func= NULL, 
+          legend.func = NULL, main= "GMU1422")
+title("Boxplots by chip after print tip loess normalization", outer=TRUE)
+```    
+
+<p> </p>
+
+f. Write a brief paragraph comparing and contrasting these normalization methods applied to this set of custom spotted array data.
+
+From part (a) we can see that there is a tendency between A and M for all the chips, this behavior implies that normalization would be required.  After applying the constant global normalization (part (c)), we can see that it did not correct the tendency, even though it decreases the variability a little bit. The loess normalization seems to do a better job normalizing this data since the cloud has been brought down to the M=0 (part (d)), however, there still some tendency of high differences (M) with low averages (A), which is reflected in the boxplot. Finally, the print-tip loess normalization seems to be the better when normalizing this data by the results showed on the MA plots and the boxplots. 
+
+<br />   
+
+## Question 5 
+
+Read the posted *.CEL files (Affymetrix GeneChip data) into the R programming environment. These two GeneChips were each hybridized with the same RNA, hence, they are technical replicates.
+
+```{r message=FALSE, warning=FALSE}
+library(affy)
+filenames <- list.celfiles(pattern = "RefCA*") 
+q5<-read.affybatch(filenames=filenames) 
+```  
+
+<p> </p>
+
+a. Produce a boxplot of the PM and MM intensities signals by GeneChip.
+
+```{r message=FALSE, warning=FALSE}
+par(mfrow=c(1,2),oma=c(0,0,2,0))
+boxplot(log2(pm(q5)), main="PM intensities", ylab="log2(Signal)",
+        ylim=c(5,15))
+boxplot(log2(mm(q5)), main="MM intensities", ylab="log2(Signal)",
+        ylim=c(5,15))
+title("PM and MM intensities signals by GeneChip", outer=TRUE)
+```   
+
+<p> </p>
+
+The boxplot shows that there are important differences between the intensities of different arrays. Then, there is a need for an array normalization. Also, when comparing PM vs. MM, the signal in MM boxplot looks smaller than in PM boxplot for both arrays.       
+
+<p> </p>
+
+b. Produce the MA plots using only the PM intensities for these GeneChips.
+
+<p> </p>
+
+```{r}
+ma.plot <- function(x, y) {
+  #function provided by Dr. Dozmorov
+  M <- log(x, 2) - log(y, 2)
+  A <- (log(x, 2) + log(y, 2))/2
+  plot(A, M)  ### A is on the x axis, M on the y axis.
+}
+
+ma.plot(pm(q5)[, 1], pm(q5)[, 2]) 
+abline(h = 0, col="red")
+title("MA plot for the PM intensities")
+``` 
+
+<p> </p>
+
+The MA plot for the raw data also shows that an array normalization is required since the cloud is above the red line.    
+
+
+<p> </p>
+
+
+c. Apply quantile normalization to this set of data; plot the resulting MA plot for the post-normalized PM data for these GeneChips.
+
+<p> </p>
+
+```{r}
+q5.quantile <- normalize(q5)  
+
+ma.plot(pm(q5.quantile )[, 1], pm(q5.quantile )[, 2]) 
+abline(h = 0, col="red")
+title("MA plot for the PM intensities after quantile normalization")
+```   
+
+<p> </p>
+
+The quantile normalization seems to do a good job normalizing the data since the cloud is now more symmetric around the red line.
+
+<p> </p>
+
+d. Apply invariant set normalization and plot the resulting MA plot for the post- normalized PM data for these GeneChips. 
+
+<p> </p>
+
+```{r}
+q5.invariant <- normalize(q5, method = "invariantset")  
+
+ma.plot(pm(q5.invariant )[, 1], pm(q5.invariant )[, 2]) 
+abline(h = 0, col="red")
+title("MA plot for the PM intensities after invariant normalization")
+```   
+
+<p> </p>
+
+The invariant normalization also centers the data around the red line. However, for the largest values of A, the quantile normalization seems to perform better.
+
+<p> </p>
+
+
+e. Apply loess normalization and plot the resulting MA plot for the post- normalized PM data for these GeneChips.
+
+<p> </p>
+
+```{r}
+q5.loess <- normalize(q5, method = "loess")  
+
+ma.plot(pm(q5.loess )[, 1], pm(q5.loess )[, 2]) 
+abline(h = 0, col="red")
+title("MA plot for the PM intensities after loess normalization")
+```   
+
+<p> </p>
+
+Even though the cloud on the MA plot after the loess normalization is more centered around the red line (M=0) as compared with the MA plot for the raw data, the results with the quantile normalization are better if we see the largest values of A.
+
+<p> </p>
